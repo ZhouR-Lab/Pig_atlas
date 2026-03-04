@@ -21,19 +21,18 @@ data$tissue <- factor(data$tissue, levels = names(custom_colors))
 
 #=========================================================
 #=========================================================
-# 设定截断坐标轴
 axis_trunc <- ggh4x::guide_axis_truncated(
   trunc_lower = unit(0, "npc"),
   trunc_upper = unit(3, "cm")
 )
 
 p_umap <- ggplot(data, aes(x = UMAP_1, y = UMAP_2, color = tissue)) +
-  geom_point(size = pt_size, stroke = 0) + # stroke = 0 可以让点更清晰，无边框
-  theme_classic() + # 模拟 Seurat 的默认白底主题
+  geom_point(size = pt_size, stroke = 0) + # stroke = 0 
+  theme_classic() + 
   guides(
     x = axis_trunc, 
     y = axis_trunc,
-    color = guide_legend(override.aes = list(size = 5)) # 放大图例中的点
+    color = guide_legend(override.aes = list(size = 5)) 
   ) +
   scale_color_manual(values = custom_colors, drop = FALSE) +
   labs(x = "UMAP_1", y = "UMAP_2") +
@@ -70,10 +69,10 @@ p_bar <- ggplot(meta_data, aes(x = tissue, y = n, fill = tissue)) +
   scale_fill_manual(values = custom_colors, drop = FALSE) +
   scale_x_discrete(expand = c(0, 0)) +
   scale_y_continuous(
-    breaks = c(20000, 50000, 80000), # 根据实际细胞数调整
+    breaks = c(20000, 50000, 80000), 
     labels = scales::number_format(),
     expand = c(0, 0),
-    limits = c(0, 100000)            # 根据实际细胞数调整
+    limits = c(0, 100000)           
   ) +
   coord_flip() +
   theme_classic() +

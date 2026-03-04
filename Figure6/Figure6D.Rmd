@@ -7,10 +7,8 @@ suppressPackageStartupMessages({
   library(ggplot2)
 })
 
-# 1. 加载数据 (假定 xlsx 文件在同一工作目录下)
 MYOT_GTEX <- read_excel("Figure6D.input.xlsx")
 
-# 2. 数据预处理与分组
 breed_order <- c("Duroc", "Landrace", "Yorkshire", "Wuzhishan", "Meishan", "Rongchang", "Tongcheng")
 custom_colors <- c("Duroc"="#3A5974", "Landrace"="#9DA5C5", "Yorkshire"="#7FB0C2",
                    "Wuzhishan"="#C79A97", "Meishan"="#E0B98B", "Rongchang"="#D1BEAD", "Tongcheng"="#B7AEB7")
@@ -26,14 +24,12 @@ MYOT_GTEX <- MYOT_GTEX %>%
     )
   )
 
-# 3. 欧亚猪种统计检验 (Wilcoxon Test)
 message("--- Sample counts by Region ---")
 print(table(MYOT_GTEX$Region))
 
 stat_res <- wilcox.test(logTPM ~ Region, data = MYOT_GTEX, exact = FALSE)
 message(sprintf("\nWilcoxon Test P-value (European vs Asian): %.2e", stat_res$p.value))
 
-# 4. 绘制箱线图
 p <- ggplot(MYOT_GTEX, aes(x = breed, y = logTPM, color = breed)) +
   geom_boxplot(width = 0.6, outlier.shape = NA, na.rm = TRUE, fill = NA, linewidth = 1, alpha = 0.5) +
   geom_point(alpha = 1, size = 1.5, na.rm = TRUE) +
@@ -54,7 +50,7 @@ p <- ggplot(MYOT_GTEX, aes(x = breed, y = logTPM, color = breed)) +
     plot.margin = unit(c(1,1,1,1), "cm")
   )
 
-# 5. 保存图像
+
 ggsave(
   filename = "Fig6D.pdf", 
   plot = p, 

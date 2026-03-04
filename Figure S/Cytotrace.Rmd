@@ -7,10 +7,8 @@ suppressPackageStartupMessages({
   library(dplyr)
 })
 
-# 1. 读取更新后的极简数据
 data <- read.table("./Cytotrace.txt", header = TRUE, sep = "\t")
 
-# 2. 全局参数设置 (顺序与配色)
 config <- list(
   stage = list(
     levels = c("E38", "E80", "PN0", "PN28", "PN180"),
@@ -27,19 +25,14 @@ config <- list(
   )
 )
 
-# 3. 封装高级绘图函数
-# x_var: 作为X轴的列名 ("stage", "tissue", "cell_lineage")
 plot_cytotrace_violin <- function(df, x_var, out_file) {
   
-  # 获取当前X轴对应的固定顺序和颜色
   x_levels <- config[[x_var]]$levels
   x_colors <- config[[x_var]]$colors
   
-  # 剔除数据中不存在的因子 (防止因为某些组织/谱系缺失某阶段导致报错)
   present_levels <- intersect(x_levels, unique(df[[x_var]]))
   df[[x_var]] <- factor(df[[x_var]], levels = present_levels, ordered = TRUE)
-  
-  # 动态生成相邻组对比对
+
   adj_pairs <- list()
   if (length(present_levels) > 1) {
     adj_pairs <- lapply(1:(length(present_levels)-1), function(i) c(present_levels[i], present_levels[i+1]))
@@ -63,7 +56,6 @@ plot_cytotrace_violin <- function(df, x_var, out_file) {
       plot.margin = unit(c(1,1,1,1), "cm")
     )
   
-  # 只有当组数大于等于2时，才添加显著性检验
   if (length(adj_pairs) > 0) {
     p <- p + stat_compare_means(
       bracket.size = 0.5, comparisons = adj_pairs, method = "wilcox.test",
@@ -75,16 +67,12 @@ plot_cytotrace_violin <- function(df, x_var, out_file) {
   ggsave(out_file, plot = p, device = cairo_pdf, width = 8, height = 7, dpi = 300)
 }
 
-# =========================================================
-# 4. 批量执行绘图
-# =========================================================
 dir.create("figures/CytoTRACE", showWarnings = FALSE, recursive = TRUE)
 
-# --- Fig S12: Tissue (组织相关比较) ---
-# 1. 比较所有组织
+
 plot_cytotrace_violin(data, x_var = "tissue", out_file = "figures/CytoTRACE/FigS12_All_Tissue.pdf")
 
-# 2. 按组织拆分，画各自随 stage 的变化
+
 invisible(lapply(config$tissue$levels, function(t) {
   sub_data <- data %>% filter(tissue == t)
   if(nrow(sub_data) > 0) {
@@ -94,11 +82,10 @@ invisible(lapply(config$tissue$levels, function(t) {
 }))
 
 
-# --- Fig S13: Cell Lineage (谱系相关比较) ---
-# 1. 比较所有谱系
+
 plot_cytotrace_violin(data, x_var = "cell_lineage", out_file = "figures/CytoTRACE/FigS13_All_Lineage.pdf")
 
-# 2. 按谱系拆分，画各自随 stage 的变化
+
 invisible(lapply(config$cell_lineage$levels, function(l) {
   sub_data <- data %>% filter(cell_lineage == l)
   if(nrow(sub_data) > 0) {

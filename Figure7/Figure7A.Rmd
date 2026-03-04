@@ -7,14 +7,11 @@ suppressPackageStartupMessages({
   library(grid)
 })
 
-# 1. 导入行列顺序配置
 source("./config_odds.R")
 
-# 2. 读取数据矩阵
 odds   <- as.matrix(read.table("./pig_human_OR.txt", header = TRUE, row.names = 1, sep = "\t", check.names = FALSE))
 odds_p <- as.matrix(read.table("./pig_human_pvalue.txt", header = TRUE, row.names = 1, sep = "\t", check.names = FALSE))
 
-# 3. 数据清洗与对齐
 odds[is.na(odds) | is.infinite(odds)] <- 0
 odds_p[is.na(odds_p) | is.infinite(odds_p)] <- 1
 odds_p <- odds_p[rownames(odds), colnames(odds), drop = FALSE]
@@ -25,7 +22,6 @@ col_order2 <- intersect(col_order, colnames(odds))
 odds   <- odds[row_order2, col_order2, drop = FALSE]
 odds_p <- odds_p[row_order2, col_order2, drop = FALSE]
 
-# 4. OR 截断设置与颜色映射
 cap <- 3
 odds_plot <- odds
 odds_plot[odds_plot < 0] <- 0
@@ -37,13 +33,11 @@ my_colors <- c("#2166AC", "#4393C3", "#92C5DE", "#D1E5F0", "#F7F7F7",
 breaks <- c(seq(0, 1, length.out = 4), seq(1, cap, length.out = 7)[-1]) 
 col_fun <- colorRamp2(breaks, my_colors)
 
-# 5. 设置单元格大小与热图主体尺寸
 cell_w <- unit(5, "mm")   
 cell_h <- unit(5, "mm")   
 body_w <- cell_w * ncol(odds_plot)
 body_h <- cell_h * nrow(odds_plot)
 
-# 6. 构建热图
 ht <- Heatmap(
   odds_plot, name = "Odds_ratio", col = col_fun,
   cluster_rows = FALSE, cluster_columns = FALSE,
@@ -61,7 +55,7 @@ ht <- Heatmap(
   }
 )
 
-# 7. 动态计算画布大小并输出
+
 out_pdf <- "Figure7A.pdf"
 pdf_w_in <- convertWidth(unit(55, "mm") + body_w + unit(55, "mm"), "in", valueOnly = TRUE)
 pdf_h_in <- convertHeight(unit(55, "mm") + body_h + unit(55, "mm"), "in", valueOnly = TRUE)
