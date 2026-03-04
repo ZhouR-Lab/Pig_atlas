@@ -1,0 +1,3 @@
+pdf(file.path(out_dir, "Figure3C_ModuleCorrelogram.pdf"), width = 10, height = 8)
+ModuleCorrelogram(obj)
+dev.off()

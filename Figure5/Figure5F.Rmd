@@ -1,0 +1,20 @@
+visCluster(
+  obj,
+  plot.type = "both",
+  ht.col.list = list(
+    col_range = c(-2, 0, 2)
+  ),
+  pseudotime_col = pseudotime_col,
+  show_row_dend = FALSE,
+  show_column_dend = FALSE,
+  annoTerm.data = enrich,
+  add.box = FALSE,
+  add.line = TRUE,
+  line.side = "left",
+  go.col = go_col,
+  add.bar = FALSE,
+  panel.arg = c(2, 0.2, 4, "grey90", NA),
+  term.text.limit = c(7, 10),
+  word_wrap = TRUE,
+  add_new_line = TRUE
+)

@@ -1,0 +1,97 @@
+library(dplyr)
+library(ggplot2)
+library(scales)
+library(ggh4x)
+
+data<-readRDS("./metadata.rds")
+out_dir <- "figures"               
+dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
+
+pt_size <- 1   
+
+custom_colors <- c(
+  "Heart"  = "#EB8C86",
+  "Kidney" = "#EED314",
+  "Muscle" = "#3498CB",
+  "Liver"  = "#339848",
+  "Lung"   = "#895b8a"
+)
+
+data$tissue <- factor(data$tissue, levels = names(custom_colors))
+
+#=========================================================
+#=========================================================
+# 设定截断坐标轴
+axis_trunc <- ggh4x::guide_axis_truncated(
+  trunc_lower = unit(0, "npc"),
+  trunc_upper = unit(3, "cm")
+)
+
+p_umap <- ggplot(data, aes(x = UMAP_1, y = UMAP_2, color = tissue)) +
+  geom_point(size = pt_size, stroke = 0) + # stroke = 0 可以让点更清晰，无边框
+  theme_classic() + # 模拟 Seurat 的默认白底主题
+  guides(
+    x = axis_trunc, 
+    y = axis_trunc,
+    color = guide_legend(override.aes = list(size = 5)) # 放大图例中的点
+  ) +
+  scale_color_manual(values = custom_colors, drop = FALSE) +
+  labs(x = "UMAP_1", y = "UMAP_2") +
+  theme(
+    axis.title.x = element_text(size = 18, hjust = 0, face = "bold"),
+    axis.title.y = element_text(size = 18, hjust = 0, angle = 90, face = "bold"),
+    axis.line = element_line(
+      arrow = arrow(length = unit(0.3, "cm"), ends = "last", type = "closed"),
+      linewidth = 1.5
+    ),
+    axis.text.x = element_blank(),
+    axis.text.y = element_blank(),
+    axis.ticks = element_blank(),
+    plot.title = element_blank(),
+    legend.text = element_text(size = 18),
+    legend.title = element_blank()
+  )
+
+print(p_umap)
+
+ggsave(
+  filename = file.path(out_dir, "Fig1C_tissue_umap.pdf"),
+  plot = p_umap,
+  width = 8, height = 7, dpi = 300
+)
+
+meta_data <- data %>%
+  group_by(tissue) %>%
+  summarise(n = n(), .groups = "drop") %>%
+  mutate(tissue = factor(tissue, levels = names(custom_colors)))
+
+p_bar <- ggplot(meta_data, aes(x = tissue, y = n, fill = tissue)) +
+  geom_col(width = 0.8) +
+  scale_fill_manual(values = custom_colors, drop = FALSE) +
+  scale_x_discrete(expand = c(0, 0)) +
+  scale_y_continuous(
+    breaks = c(20000, 50000, 80000), # 根据实际细胞数调整
+    labels = scales::number_format(),
+    expand = c(0, 0),
+    limits = c(0, 100000)            # 根据实际细胞数调整
+  ) +
+  coord_flip() +
+  theme_classic() +
+  theme(
+    legend.position = "none",
+    axis.line = element_line(linewidth = 0.5),
+    axis.text.x = element_text(size = 18, face = "bold", color = "black"),
+    axis.text.y = element_text(size = 18, face = "bold", color = "black", hjust = 1),
+    axis.title.x = element_blank(),    
+    axis.title.y = element_blank(),
+    plot.margin = margin(20, 20, 20, 20)
+  ) +
+  labs(y = "Cell Number")
+
+print(p_bar)
+
+ggsave(
+  filename = file.path(out_dir, "Fig1C_tissue_number.pdf"),
+  plot = p_bar,
+  width = 6, height = 7, dpi = 300
+)

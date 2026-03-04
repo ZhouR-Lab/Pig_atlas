@@ -1,0 +1,123 @@
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(scales)
+
+data<-readRDS("./metadata.rds")
+out_dir <- "figures"
+dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
+
+stage_col   <- "stage"
+sample_col  <- "orig.ident"
+lineage_col <- "cell_lineage"
+
+comparisons <- list(
+  c("E80",   "E38",   "E80_over_E38"),
+  c("PN0",   "E80",   "PN0_over_E80"),
+  c("PN28",  "PN0",   "PN28_over_PN0"),
+  c("PN180", "PN28",  "PN180_over_PN28")
+)
+comparison_colors <- c(
+  "E80_over_E38"     = "#31688e",
+  "PN0_over_E80"     = "#20918d",
+  "PN28_over_PN0"    = "#35b879",
+  "PN180_over_PN28"  = "#fee724"
+)
+#=========================================================
+sample_props <- data %>%
+  group_by(
+    stage   = .data[[stage_col]],
+    sample  = .data[[sample_col]],
+    lineage = .data[[lineage_col]]
+  ) %>%
+  summarise(cell_count = n(), .groups = "drop_last") %>%
+  mutate(sample_total = sum(cell_count)) %>%
+  ungroup() %>%
+  mutate(prop = cell_count / sample_total)
+#=========================================================
+avg_props <- sample_props %>%
+  group_by(stage, lineage) %>%
+  summarise(mean_prop = mean(prop), .groups = "drop")
+
+#=========================================================
+ratio_results <- lapply(comparisons, function(comp) {
+  stage1 <- comp[1]
+  stage2 <- comp[2]
+  comp_name <- comp[3]
+  props_stage1 <- avg_props %>%
+    filter(stage == stage1) %>%
+    select(lineage, mean_prop1 = mean_prop)
+  props_stage2 <- avg_props %>%
+    filter(stage == stage2) %>%
+    select(lineage, mean_prop2 = mean_prop)
+  full_join(props_stage1, props_stage2, by = "lineage") %>%
+    mutate(
+      mean_prop1 = replace_na(mean_prop1, 0),
+      mean_prop2 = replace_na(mean_prop2, 0),
+      # Using a pseudocount logic would be safer if actual 0s exist, 
+      # but sticking to your original formula:
+      ratio      = log2((mean_prop1) / (mean_prop2)), 
+      size_value = (mean_prop1 + mean_prop2) / 2,
+      comparison = comp_name
+    )
+}) %>% bind_rows()
+ratio_results$comparison <- factor(
+  ratio_results$comparison,
+  levels = names(comparison_colors),
+  ordered = TRUE
+)
+
+lineage_order <- ratio_results %>%
+  group_by(lineage) %>%
+  summarise(median_ratio = median(ratio, na.rm = TRUE), .groups = "drop") %>%
+  arrange(desc(median_ratio)) %>%
+  pull(lineage)
+
+ratio_results$lineage <- factor(ratio_results$lineage, levels = lineage_order)
+
+#=========================================================
+p <- ggplot(ratio_results, aes(x = lineage, y = ratio)) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "red", linewidth = 0.8) +
+  geom_point(aes(color = comparison, size = size_value), alpha = 1) +
+  scale_color_manual(
+    name = "Comparison group",
+    values = comparison_colors,
+    breaks = names(comparison_colors)
+  ) +
+  scale_size_continuous(
+    name = "Proportion",
+    range = c(1, 10),
+    breaks = c(0.05, 0.10, 0.20, 0.40),                
+    labels = scales::percent_format(accuracy = 1),
+    guide = guide_legend(override.aes = list(color = "black"), nrow = 2)
+  ) +
+  labs(x = NULL, y = "log2(avg prop ratio)") +
+  theme_minimal(base_size = 14) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 18, color = "black"),
+    axis.text.y = element_text(size = 18, color = "black"),
+    axis.title  = element_text(color = "black", size = 22),
+    axis.title.y = element_text(margin = margin(r = 10)),
+    panel.grid.major = element_line(color = "grey90"),
+    panel.grid.minor = element_blank(),
+    plot.margin = margin(0.5, 0.5, 0.5, 0.5, "cm"),
+    axis.line  = element_line(color = "black", linewidth = 0.5),
+    axis.ticks = element_line(color = "black"),
+    legend.position = "right",
+    legend.box = "vertical",
+    legend.spacing.y = unit(0.5, "cm"),
+    legend.title = element_text(color = "black", size = 18),
+    legend.text  = element_text(size = 15)
+  ) +
+  guides(
+    color = guide_legend(order = 1, override.aes = list(size = 6)),
+    size  = guide_legend(order = 2)
+  )
+print(p)
+#=========================================================
+out_file <- file.path(out_dir, "Fig1G_lineage_ratio.pdf")
+if (capabilities("cairo")) {
+  ggsave(filename = out_file, plot = p, width = 7.5, height = 4.8, dpi = 300, device = cairo_pdf)
+} else {
+  ggsave(filename = out_file, plot = p, width = 7.5, height = 4.8, dpi = 300)
+}

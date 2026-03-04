@@ -1,0 +1,21 @@
+modulescore<-readRDS("./pig_module_score.rds")
+cell_lineage_score <-modulescore%>%group_by(cell_lineage)%>%
+  summarise(M1 = mean(Module1_score),
+            M2 = mean(Module2_score),
+            M3 = mean(Module3_score),
+            M4 = mean(Module4_score),
+            M5 = mean(Module5_score),
+            M6 = mean(Module6_score),
+            M7 = mean(Module7_score),
+            M8 = mean(Module8_score))%>%
+  as.data.frame()
+rownames(cell_lineage_score)<-cell_lineage_score$cell_lineage
+cell_lineage_score$cell_lineage<-NULL
+ComplexHeatmap::Heatmap(t(scale(cell_lineage_score)),col=solarExtra,
+                        cluster_rows =T,cluster_columns=F,
+                        show_row_names = F,show_column_names = F,
+                        row_names_gp=grid::gpar(fontsize=6),
+                        show_column_dend=F,show_row_dend=F,
+                        cluster_column_slices=T,cluster_row_slices=F,
+                        row_title=NULL,use_raster=F,column_title_rot = 45,
+                        column_title_gp=grid::gpar(fontsize=8))

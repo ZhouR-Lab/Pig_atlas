@@ -1,0 +1,59 @@
+tissue_cell_lineage_deg <- readRDS("./tissue_cell_lineage_deg.rds")
+df <- tissue_cell_lineage_deg %>%  
+  filter(p_val_adj < 0.05 & abs(avg_log2FC) > 0.25) %>%  
+  mutate(change = ifelse(avg_log2FC > 0, "up", "down"))  
+
+plot_data <- df %>%
+  filter(group %in% c("Erythroid","Immune" ,"Neural"  , "Epithelial","Stromal", "Muscle" ,"Endothelial")) %>%
+  mutate(group = factor(group, levels = c("Endothelial", "Epithelial","Erythroid","Immune" ,"Muscle" ,"Neural"  ,"Stromal" ))) %>%
+  group_by(group, compare) %>%
+  summarise(gene_count = n(), .groups = 'drop') %>%
+  group_by(group) %>%
+  mutate(percent = gene_count / sum(gene_count) * 100) %>%
+  ungroup() %>%
+  mutate(compare = factor(compare, 
+                          levels = c("E80_vs_E38", "PN0_vs_E80", 
+                                     "PN28_vs_PN0", "PN180_vs_PN28")))
+
+p <- ggplot(plot_data,
+            aes(x = group,
+                y = percent,
+                stratum = compare,
+                alluvium = compare,
+                fill = compare)) +
+  geom_flow(alpha = 0.7, width = 0.7) +
+  geom_stratum(width = 0.7) +
+  scale_fill_manual(
+    name = "Comparison Group",
+    values = c(
+      "E80_vs_E38" = "#31688e", 
+      "PN0_vs_E80" = "#20918d", 
+      "PN28_vs_PN0" = "#35b879", 
+      "PN180_vs_PN28" = "#fee724"
+    )
+  ) +
+  scale_y_continuous(name = "Percentage of DEGs (%)", 
+                     expand = c(0, 0)) +
+  scale_x_discrete(expand = c(0.0, 0.0)) +
+  theme_minimal(base_size = 18) +
+  theme(
+    axis.text.y = element_text(size = 18, color = "black"),
+    axis.text.x = element_text(size = 18, angle = 45, hjust = 1, color = "black"),
+    axis.title.y = element_text(size = 18),
+    axis.title.x = element_blank(),
+    legend.title = element_blank(),
+    legend.text = element_text(size = 18),
+    axis.ticks = element_line(color = "black", size = 0.5),
+    axis.ticks.length = unit(0.1, "cm"),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    plot.margin = margin(20, 20, 20, 20)
+  ) +
+  guides(fill = guide_legend(
+    override.aes = list(shape = 21, size = 1),
+    position = "right",
+    direction = "vertical"
+  ))
+print(p)
+ggsave(filename = file.path(out_dir, "Fig2D_cell_lineage_DEG.pdf"),
+       plot = p, device = cairo_pdf, width = 11,  height = 7,  dpi = 300)

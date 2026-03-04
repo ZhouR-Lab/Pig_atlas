@@ -1,0 +1,16 @@
+library(reshape2)
+library(igraph)
+library(ggrepel)
+library(hdWGCNA)
+pdf(file.path(out_dir, "Figure3A_hubgene_umap.pdf"), width = 15, height = 15)
+options(future.globals.maxSize = 30 * 1024^3)
+ModuleUMAPPlot(
+  obj,
+  edge.alpha = 0.5,
+  sample_edges = TRUE,
+  keep_grey_edges = FALSE,
+  edge_prop = 0.075,
+  #label_genes = label_genes,
+  label_hubs = 5
+)
+dev.off()

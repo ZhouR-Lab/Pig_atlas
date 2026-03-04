@@ -1,0 +1,22 @@
+modulescore<-readRDS("./pig_module_score.rds")
+stage <- subset(modulescore, cell_lineage == "Epithelial") %>%group_by(stage) %>%
+  summarise(across(all_of(c("M7","M1","M3","M6","M2","M8","M4","M5")), mean)) %>%
+  as.data.frame()
+rownames(stage) <- stage$stage
+stage$stage <- NULL
+stage <- stage[, c("M7","M1","M3","M6","M2","M8","M4","M5")]
+colnames(stage) <- module_names[colnames(stage)]
+stage_long <- stage %>%rownames_to_column("stage") %>%pivot_longer(cols = everything()[-1],names_to = "Module",values_to = "MeanScore")
+stage_long_filtered <- stage_long %>%filter(Module %in% c("M4", "M5"))
+stage_long_filtered$stage <- factor(stage_long_filtered$stage,levels = c("E38", "E80", "PN0", "PN28", "PN180"))
+ ggplot(stage_long_filtered, aes(x = stage, y = MeanScore, group = Module, color = Module)) +
+  geom_line(size = 1.5) +
+  geom_point(size = 3) +
+  scale_color_manual(values = c("M4" = "#1F78B4", "M5" = "#E31A1C")) +  # 蓝红配色
+  theme_bw() +
+  theme(axis.text = element_text(size = 14, color = "black"),
+        axis.title = element_text(size = 16),
+        legend.title = element_blank(),
+        legend.text = element_text(size = 14),
+        panel.grid = element_blank()) +
+  labs(x = "Stage", y = "Module Average Score")

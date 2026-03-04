@@ -1,0 +1,5 @@
+p <- DotPlot(obj, features = mods, group.by = "cell_type")
+p <- p +
+  RotatedAxis() +
+  scale_color_gradient2(high = "red", mid = "grey95", low = "blue")
+p

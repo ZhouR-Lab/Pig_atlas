@@ -1,0 +1,8 @@
+library(monocle)
+obj<-readRDS("./monocle.rds")
+plot_cell_trajectory(
+  obj,
+  color_by = "State",
+  cell_size = 1,
+  alpha = 1
+)

@@ -1,0 +1,18 @@
+library(Seurat)
+library(clusterProfiler)
+library(org.Ss.eg.db)
+library(tidyverse)
+data<-readRDS("CSI.rds")
+info<-read.csv("Module_TF_list.csv",row.names = 1)
+x=pheatmap::pheatmap(data,clustering_method = "ward.D2",cutree_rows = 8,cutree_cols = 8)
+data<-data[x$tree_row$order,x$tree_row$order]
+# Module TF GO enrichment Analysis 
+gene_list<-split(info$TF,data$Module)
+go1 <- enrichGO(gene=gene_list$Module1, OrgDb = org.Ss.eg.db,ont= "ALL",keyType = "SYMBOL",pAdjustMethod = "BH",pvalueCutoff= 0.05,qvalueCutoff= 0.05, readable= TRUE) 
+go2 <- enrichGO(gene=gene_list$Module2, OrgDb = org.Ss.eg.db,ont= "ALL",keyType = "SYMBOL",pAdjustMethod = "BH",pvalueCutoff= 0.05,qvalueCutoff= 0.05, readable= TRUE) 
+go3 <- enrichGO(gene=gene_list$Module3, OrgDb = org.Ss.eg.db,ont= "ALL",keyType = "SYMBOL",pAdjustMethod = "BH",pvalueCutoff= 0.05,qvalueCutoff= 0.05, readable= TRUE) 
+go4 <- enrichGO(gene=gene_list$Module4, OrgDb = org.Ss.eg.db,ont= "ALL",keyType = "SYMBOL",pAdjustMethod = "BH",pvalueCutoff= 0.05,qvalueCutoff= 0.05, readable= TRUE) 
+go5 <- enrichGO(gene=gene_list$Module5, OrgDb = org.Ss.eg.db,ont= "ALL",keyType = "SYMBOL",pAdjustMethod = "BH",pvalueCutoff= 0.05,qvalueCutoff= 0.05, readable= TRUE) 
+go6 <- enrichGO(gene=gene_list$Module6, OrgDb = org.Ss.eg.db,ont= "ALL",keyType = "SYMBOL",pAdjustMethod = "BH",pvalueCutoff= 0.05,qvalueCutoff= 0.05, readable= TRUE) 
+go7 <- enrichGO(gene=gene_list$Module7, OrgDb = org.Ss.eg.db,ont= "ALL",keyType = "SYMBOL",pAdjustMethod = "BH",pvalueCutoff= 0.05,qvalueCutoff= 0.05, readable= TRUE) 
+go8 <- enrichGO(gene=gene_list$Module8, OrgDb = org.Ss.eg.db,ont= "ALL",keyType = "SYMBOL",pAdjustMethod = "BH",pvalueCutoff= 0.05,qvalueCutoff= 0.05, readable= TRUE) 

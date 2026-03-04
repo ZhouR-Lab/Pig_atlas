@@ -1,0 +1,115 @@
+suppressPackageStartupMessages({
+  library(Seurat)
+  library(dplyr)
+  library(ggplot2)
+  library(stringr)
+  library(tibble)
+})
+
+#=========================================================
+# Output directory (GitHub-friendly)
+#=========================================================
+out_dir <- "figures"
+dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
+
+#=========================================================
+# 1) Average expression matrix (cluster-level)
+#=========================================================
+quant_mx <- AverageExpression(
+  obj,
+  assays   = "RNA",
+  group.by = "cluster_id"
+)$RNA
+
+data <- na.omit(quant_mx)
+
+# Keep top genes by mean expression (max 2000)
+data_mean <- apply(data, 1, mean)
+sel_mean  <- order(data_mean, decreasing = TRUE)[seq_len(min(2000, length(data_mean)))]
+data      <- data[sel_mean, , drop = FALSE]
+
+# Select top variable genes by CV (sd/mean)
+data_rv <- apply(data, 1, function(x) sd(x) / mean(x))
+ntop    <- 1000
+sel_rv  <- order(data_rv, decreasing = TRUE)[seq_len(min(ntop, length(data_rv)))]
+data    <- data[sel_rv, , drop = FALSE]
+
+#=========================================================
+# 2) PCA
+#=========================================================
+pca <- prcomp(t(data), scale. = TRUE)
+
+pca_summary <- summary(pca)
+pct_var <- pca_summary$importance[2, ] * 100
+PCA_var <- setNames(round(pct_var, 1), names(pct_var))
+
+#=========================================================
+# 3) Plotting data
+#    Expecting sample names like: Tissue#Stage#Cell_lineage#Celltype
+#=========================================================
+PCAplotdata <- as.data.frame(pca$x[, 1:4, drop = FALSE])
+
+info <- as.data.frame(str_split_fixed(rownames(PCAplotdata), pattern = "#", n = 4))
+colnames(info) <- c("Tissue", "Stage", "Cell_lineage", "Celltype")
+
+info$Stage <- factor(info$Stage, levels = c("E38", "E80", "PN0", "PN28", "PN180"))
+info$Tissue <- factor(info$Tissue, levels = c("Muscle", "Heart", "Kidney", "Lung", "Liver"))
+
+PCAplotdata <- cbind(PCAplotdata, info)
+
+#=========================================================
+# 4) PCA scatter plot
+#=========================================================
+x_axis <- "PC1"
+y_axis <- "PC2"
+
+tissue_colors <- c(
+  "Muscle" = "#3498CB",
+  "Lung"   = "#895b8a",
+  "Heart"  = "#EB8C86",
+  "Kidney" = "#EED314",
+  "Liver"  = "#339848"
+)
+
+p <- ggplot(PCAplotdata, aes(x = .data[[x_axis]], y = .data[[y_axis]])) +
+  geom_point(aes(shape = Stage, color = Tissue), size = 4, alpha = 1) +
+  scale_color_manual(values = tissue_colors, drop = FALSE) +
+  geom_vline(xintercept = 0, color = "gray50", linetype = "dashed", linewidth = 0.4) +
+  geom_hline(yintercept = 0, color = "gray50", linetype = "dashed", linewidth = 0.4) +
+  scale_x_continuous(expand = c(0.2, 0.2)) +
+  scale_y_continuous(expand = c(0.2, 0.2)) +
+  labs(
+    x = paste0(x_axis, " (", PCA_var[[x_axis]], "%)"),
+    y = paste0(y_axis, " (", PCA_var[[y_axis]], "%)")
+  ) +
+  theme(
+    panel.grid = element_blank(),
+    panel.background = element_rect(color = "black", fill = "transparent"),
+    legend.key = element_blank(),
+    legend.background = element_blank(),
+    legend.box.background = element_blank(),
+    legend.title = element_blank(),
+    legend.text = element_text(size = 15, color = "black"),
+    axis.title.x = element_text(size = 18, vjust = 0),
+    axis.title.y = element_text(size = 16, color = "black", vjust = 0, margin = margin(r = 20)),
+    axis.text.x  = element_text(size = 15, color = "black", hjust = 1),
+    axis.text.y  = element_text(size = 15, color = "black")
+  ) +
+  guides(
+    color = guide_legend(override.aes = list(size = 5)),
+    shape = guide_legend(override.aes = list(size = 5))
+  )
+
+print(p)
+
+#=========================================================
+# 5) Save figure (no local absolute path)
+#=========================================================
+ggsave(
+  filename = file.path(out_dir, "Fig2B_PCA.pdf"),
+  plot     = p,
+  device   = cairo_pdf,
+  width    = 7.5,
+  height   = 6,
+  dpi      = 300
+)

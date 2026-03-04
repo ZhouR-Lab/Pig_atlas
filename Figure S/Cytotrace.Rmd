@@ -1,0 +1,110 @@
+# =========================================================
+# CytoTRACE Violin Plots ( Fig S12, Fig S13)
+# =========================================================
+suppressPackageStartupMessages({
+  library(ggplot2)
+  library(ggpubr)
+  library(dplyr)
+})
+
+# 1. 读取更新后的极简数据
+data <- read.table("./Cytotrace.txt", header = TRUE, sep = "\t")
+
+# 2. 全局参数设置 (顺序与配色)
+config <- list(
+  stage = list(
+    levels = c("E38", "E80", "PN0", "PN28", "PN180"),
+    colors = c("E38"="#430155", "E80"="#31688E", "PN0"="#20918D", "PN28"="#35B879", "PN180"="#FEE724")
+  ),
+  tissue = list(
+    levels = c("Heart", "Kidney", "Muscle", "Liver", "Lung"),
+    colors = c("Heart"="#EB8C86", "Kidney"="#EED314", "Muscle"="#3498CB", "Liver"="#339848", "Lung"="#895b8a")
+  ),
+  cell_lineage = list(
+    levels = c("Endothelial", "Epithelial", "Erythroid", "Immune", "Muscle", "Neural", "Stromal"),
+    colors = c("Endothelial"="#4673aa", "Epithelial"="#e89143", "Erythroid"="#E3CC52", 
+               "Immune"="#D48AAF", "Muscle"="#d3381c", "Neural"="#727171", "Stromal"="#93ca76")
+  )
+)
+
+# 3. 封装高级绘图函数
+# x_var: 作为X轴的列名 ("stage", "tissue", "cell_lineage")
+plot_cytotrace_violin <- function(df, x_var, out_file) {
+  
+  # 获取当前X轴对应的固定顺序和颜色
+  x_levels <- config[[x_var]]$levels
+  x_colors <- config[[x_var]]$colors
+  
+  # 剔除数据中不存在的因子 (防止因为某些组织/谱系缺失某阶段导致报错)
+  present_levels <- intersect(x_levels, unique(df[[x_var]]))
+  df[[x_var]] <- factor(df[[x_var]], levels = present_levels, ordered = TRUE)
+  
+  # 动态生成相邻组对比对
+  adj_pairs <- list()
+  if (length(present_levels) > 1) {
+    adj_pairs <- lapply(1:(length(present_levels)-1), function(i) c(present_levels[i], present_levels[i+1]))
+  }
+  
+  y_max <- max(df$CytoTRACE, na.rm = TRUE) * 1.1 
+  
+  p <- ggplot(df, aes(x = .data[[x_var]], y = CytoTRACE, fill = .data[[x_var]])) +
+    geom_violin(width = 0.8, alpha = 0.8, trim = TRUE, scale = "width") +
+    geom_boxplot(width = 0.15, fill = "white", outlier.shape = NA, alpha = 0.6) +
+    scale_y_continuous(limits = c(NA, y_max), expand = expansion(mult = c(0.05, 0))) +
+    scale_fill_manual(values = x_colors) +
+    theme_classic(base_size = 14) +
+    labs(y = "Differentiation Potential") +
+    theme(
+      axis.text.x = element_text(angle = 45, hjust = 1, color = "black", size = 18),
+      axis.text.y = element_text(color = "black", size = 18),
+      axis.title.x = element_blank(),
+      axis.title.y = element_text(color = "black", size = 20),
+      legend.position = "none",
+      plot.margin = unit(c(1,1,1,1), "cm")
+    )
+  
+  # 只有当组数大于等于2时，才添加显著性检验
+  if (length(adj_pairs) > 0) {
+    p <- p + stat_compare_means(
+      bracket.size = 0.5, comparisons = adj_pairs, method = "wilcox.test",
+      label = "p.signif", y.position = y_max * 1.05,  
+      tip.length = 0.01, step.increase = 0, size = 8, vjust = 0.2 
+    )
+  }
+  
+  ggsave(out_file, plot = p, device = cairo_pdf, width = 8, height = 7, dpi = 300)
+}
+
+# =========================================================
+# 4. 批量执行绘图
+# =========================================================
+dir.create("figures/CytoTRACE", showWarnings = FALSE, recursive = TRUE)
+
+# --- Fig S12: Tissue (组织相关比较) ---
+# 1. 比较所有组织
+plot_cytotrace_violin(data, x_var = "tissue", out_file = "figures/CytoTRACE/FigS12_All_Tissue.pdf")
+
+# 2. 按组织拆分，画各自随 stage 的变化
+invisible(lapply(config$tissue$levels, function(t) {
+  sub_data <- data %>% filter(tissue == t)
+  if(nrow(sub_data) > 0) {
+    plot_cytotrace_violin(sub_data, x_var = "stage", 
+                          out_file = paste0("figures/CytoTRACE/FigS12_Tissue_", t, "_Stage.pdf"))
+  }
+}))
+
+
+# --- Fig S13: Cell Lineage (谱系相关比较) ---
+# 1. 比较所有谱系
+plot_cytotrace_violin(data, x_var = "cell_lineage", out_file = "figures/CytoTRACE/FigS13_All_Lineage.pdf")
+
+# 2. 按谱系拆分，画各自随 stage 的变化
+invisible(lapply(config$cell_lineage$levels, function(l) {
+  sub_data <- data %>% filter(cell_lineage == l)
+  if(nrow(sub_data) > 0) {
+    plot_cytotrace_violin(sub_data, x_var = "stage", 
+                          out_file = paste0("figures/CytoTRACE/FigS13_Lineage_", l, "_Stage.pdf"))
+  }
+}))
+
+message("All CytoTRACE supplementary figures generated in 'figures/CytoTRACE' directory.")

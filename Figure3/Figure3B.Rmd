@@ -1,0 +1,3 @@
+pdf(file.path(out_dir, "Figure3B_Dendrogram.pdf"), width = 9, height = 7)
+PlotDendrogram(obj, main = "Dendrogram")
+dev.off()

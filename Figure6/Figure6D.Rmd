@@ -1,0 +1,63 @@
+# =========================================================
+# GTEx Expression Boxplot & European vs Asian Wilcoxon Test
+# =========================================================
+suppressPackageStartupMessages({
+  library(tidyverse)
+  library(readxl)
+  library(ggplot2)
+})
+
+# 1. 加载数据 (假定 xlsx 文件在同一工作目录下)
+MYOT_GTEX <- read_excel("Figure6D.input.xlsx")
+
+# 2. 数据预处理与分组
+breed_order <- c("Duroc", "Landrace", "Yorkshire", "Wuzhishan", "Meishan", "Rongchang", "Tongcheng")
+custom_colors <- c("Duroc"="#3A5974", "Landrace"="#9DA5C5", "Yorkshire"="#7FB0C2",
+                   "Wuzhishan"="#C79A97", "Meishan"="#E0B98B", "Rongchang"="#D1BEAD", "Tongcheng"="#B7AEB7")
+
+MYOT_GTEX <- MYOT_GTEX %>%
+  mutate(
+    logTPM = log2(TPM + 1),
+    breed = factor(breed, levels = breed_order),
+    Region = case_when(
+      breed %in% c("Duroc", "Landrace", "Yorkshire") ~ "European",
+      breed %in% c("Wuzhishan", "Meishan", "Rongchang", "Tongcheng") ~ "Asian",
+      TRUE ~ NA_character_
+    )
+  )
+
+# 3. 欧亚猪种统计检验 (Wilcoxon Test)
+message("--- Sample counts by Region ---")
+print(table(MYOT_GTEX$Region))
+
+stat_res <- wilcox.test(logTPM ~ Region, data = MYOT_GTEX, exact = FALSE)
+message(sprintf("\nWilcoxon Test P-value (European vs Asian): %.2e", stat_res$p.value))
+
+# 4. 绘制箱线图
+p <- ggplot(MYOT_GTEX, aes(x = breed, y = logTPM, color = breed)) +
+  geom_boxplot(width = 0.6, outlier.shape = NA, na.rm = TRUE, fill = NA, linewidth = 1, alpha = 0.5) +
+  geom_point(alpha = 1, size = 1.5, na.rm = TRUE) +
+  scale_color_manual(values = custom_colors, guide = "none") +
+  labs(y = expression(Log[2](TPM + 1))) +
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 4), expand = expansion(mult = c(0.2, 0.2))) +
+  theme_classic(base_size = 18) +
+  theme(
+    panel.background = element_rect(fill = "white", colour = "black", linewidth = 0.5),
+    legend.position = "none",
+    axis.title = element_text(size = 16, color = "black"),
+    axis.title.x = element_blank(),
+    axis.title.y = element_text(margin = margin(r = 15)),
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 16, color = "black"),
+    axis.text.y = element_text(size = 16, color = "black"),
+    panel.grid = element_blank(),
+    axis.line = element_line(color = "black", linewidth = 0.5),
+    plot.margin = unit(c(1,1,1,1), "cm")
+  )
+
+# 5. 保存图像
+ggsave(
+  filename = "Fig6D.pdf", 
+  plot = p, 
+  device = cairo_pdf,
+  width = 5.1, height = 4, dpi = 300
+)

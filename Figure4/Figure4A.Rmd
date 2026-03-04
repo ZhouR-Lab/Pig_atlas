@@ -1,0 +1,47 @@
+library(Seurat)
+library(clusterProfiler)
+library(org.Ss.eg.db)
+library(ComplexHeatmap)
+library(tidyverse)
+data<-readRDS("CSI.rds")
+info<-read.csv("Module_TF_list.csv",row.names = 1)
+x=pheatmap::pheatmap(data,clustering_method = "ward.D2",cutree_rows = 8,cutree_cols = 8)
+data<-data[x$tree_row$order,x$tree_row$order]
+info<-info[rownames(data),]
+info[["Module"]]<-paste0("Module",info$Cluster)
+# CSI heatmap
+row_ha= rowAnnotation(Module=info$Module,
+                      col=list(Module=c("Module1"="#0073C2",
+                                        "Module2"="#EFC000",
+                                        "Module3"="#868686",
+                                        "Module4"="#CD534C",
+                                        "Module5"="#003C67",
+                                        "Module6"="#8F7700",
+                                        "Module7"="#3B3B3B",
+                                        "Module8"="#A73030")),show_legend=FALSE)
+col_ha= columnAnnotation(Module=info$Module,
+                         col=list(Module=c("Module1"="#0073C2",
+                                           "Module2"="#EFC000",
+                                           "Module3"="#868686",
+                                           "Module4"="#CD534C",
+                                           "Module5"="#003C67",
+                                           "Module6"="#8F7700",
+                                           "Module7"="#3B3B3B",
+                                           "Module8"="#A73030")),
+                         show_legend=FALSE)
+p<-ComplexHeatmap::Heatmap(data,col=wolfgang_extra,
+                           cluster_rows =T,cluster_columns=F,
+                           show_row_names = F,show_column_names = F,
+                           row_names_gp=grid::gpar(fontsize=6),
+                           show_column_dend=F,show_row_dend=F,
+                           cluster_column_slices=T,cluster_row_slices=F,
+                           row_split = factor(info$Module,levels =unique(info$Module)),
+                           column_split = factor(info$Module,levels =unique(info$Module)),
+                           row_title=NULL,use_raster=F,column_title_rot = 45,
+                           column_title_gp=grid::gpar(fontsize=8),
+                           #border = TRUE, 
+                           left_annotation = row_ha,top_annotation = col_ha,
+                           heatmap_legend_param = list(title="connection specificity index",direction = "horizontal",
+                                                       title_position = "topcenter",
+                                                       legend_width = unit(6, "cm")))
+

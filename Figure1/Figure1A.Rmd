@@ -1,0 +1,57 @@
+library(ggplot2)
+library(ggrepel)
+library(tidyverse)
+library(grid)
+library(ggthemes)
+library(ggalluvial)
+plot_df<-readRDS("./Fig1A_input.rds")
+data=plot_df$plot_df
+label_df=plot_df$label_df
+#all_celltype
+lower <- floor(min(min(data$UMAP_1),min(data$UMAP_2)))-2
+linelen<-abs(0.3*lower)+lower
+mid<-abs(0.3*lower)/2+lower
+axes <- data.frame(x = c(lower,lower,lower,linelen),y = c(lower,linelen,lower,lower),group = c(1,1,2,2),label = rep(c('UMAP1','UMAP2'),each = 2))
+label_axes <- data.frame(lab = c('UMAP_2','UMAP_1'),angle = c(90,0), x = c(lower-1,mid), y = c(mid,lower-1))
+ggplot(data%>% mutate(celltype = factor(celltype, levels = label_df$celltype)))+
+  geom_point(aes(x=UMAP_1,y=UMAP_2,color=celltype),size=0.00001)+
+  geom_text_repel(data=label_df,aes(x=UMAP_1,y=UMAP_2,label=label),fontface="bold",
+                  min.segment.length=0,segment.color="black",point.size= 1,max.overlaps=100,
+                  force=20,color="white",bg.color="black",bg.r=0.1,size=8)+
+  scale_color_manual(values=label_df$colors,labels=label_df$label_use)+
+  geom_line(data = axes,aes(x = x,y = y,group = group),size = 1,arrow = arrow(length = unit(0.1, "inches"), ends="last", type="closed")) +
+  geom_text(data = label_axes,aes(x = x,y = y,angle = angle,label = lab),fontface = 'plain',size=10)+
+  theme_foundation(base_size = 14) + 
+  theme(panel.background = element_rect(colour = NA),
+        panel.border = element_blank(),
+        axis.text = element_blank(),
+        axis.title = element_blank(),
+        axis.line = element_blank(),
+        axis.ticks = element_blank(),
+        panel.grid = element_blank(),
+        legend.title = element_blank(),
+        legend.text = element_text(size = 18))+
+  guides(colour = guide_legend( ncol = 4,override.aes = list(size = 10),position =  "right",direction = "vertical"))
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

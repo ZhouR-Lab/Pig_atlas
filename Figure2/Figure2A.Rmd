@@ -1,0 +1,146 @@
+  library(Seurat)
+  library(ComplexHeatmap)
+  library(circlize)
+  library(stringr)
+
+
+# -----------------------------
+# Output
+# -----------------------------
+out_dir <- "figures/heatmap"
+dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
+
+# -----------------------------
+# Metadata columns (edit if your object uses different names)
+# -----------------------------
+tissue_col   <- "tissue"
+stage_col    <- "stage"
+lineage_col  <- "cell_lineage"
+celltype_col <- "new_celltype"
+
+# -----------------------------
+# 1) Build composite cluster id and filter low-count clusters
+# -----------------------------
+obj$cluster_id <- paste(
+  obj[[tissue_col]][, 1],
+  obj[[stage_col]][, 1],
+  obj[[lineage_col]][, 1],
+  obj[[celltype_col]][, 1],
+  sep = "#"
+)
+
+cluster_counts <- table(obj$cluster_id)
+keep_clusters  <- names(cluster_counts)[cluster_counts >= 100]
+obj <- subset(obj, subset = cluster_id %in% keep_clusters)
+
+# -----------------------------
+# 2) HVGs and average expression per cluster_id
+# -----------------------------
+obj <- FindVariableFeatures(obj, selection.method = "vst", nfeatures = 2000, verbose = FALSE)
+
+avg_expr <- AverageExpression(
+  obj,
+  assays   = "RNA",
+  features = VariableFeatures(obj),
+  group.by = "cluster_id",
+  verbose  = FALSE
+)$RNA
+
+# -----------------------------
+# 3) Pearson correlation matrix
+# -----------------------------
+cor_mat <- cor(avg_expr, method = "spearman")
+
+# -----------------------------
+# 4) Parse cluster_id back to metadata for annotations
+# -----------------------------
+info <- as.data.frame(str_split_fixed(colnames(avg_expr), "#", 4))
+colnames(info) <- c("Tissue", "Stage", "Cell_lineage", "Celltype")
+rownames(info) <- colnames(avg_expr)
+
+# Optional: set desired ordering (edit levels if needed)
+info$Stage <- factor(info$Stage, levels = c("E38", "E80", "PN0", "PN28", "PN180"))
+info$Tissue <- factor(info$Tissue, levels = c("Muscle", "Heart", "Kidney", "Lung", "Liver"))
+
+# -----------------------------
+# 5) Colors (short + reproducible)
+# -----------------------------
+tissue_cols <- c(
+  "Muscle" = "#3498CB",
+  "Lung"   = "#895b8a",
+  "Heart"  = "#EB8C86",
+  "Kidney" = "#EED314",
+  "Liver"  = "#339848"
+)
+
+stage_cols <- c(
+  "E38"   = "#430155",
+  "E80"   = "#31688E",
+  "PN0"   = "#20918D",
+  "PN28"  = "#35B879",
+  "PN180" = "#FEE724"
+)
+
+set.seed(1)
+lineage_lvls <- sort(unique(as.character(info$Cell_lineage)))
+lineage_cols <- setNames(rand_color(length(lineage_lvls), luminosity = "bright"), lineage_lvls)
+
+set.seed(2)
+celltype_lvls <- sort(unique(as.character(info$Celltype)))
+celltype_cols <- setNames(rand_color(length(celltype_lvls), luminosity = "light"), celltype_lvls)
+
+# -----------------------------
+# 6) Annotations
+# -----------------------------
+col_ha <- columnAnnotation(
+  Tissue      = info$Tissue,
+  Stage       = info$Stage,
+  Cell_lineage= info$Cell_lineage,
+  Celltype    = info$Celltype,
+  col = list(
+    Tissue       = tissue_cols,
+    Stage        = stage_cols,
+    Cell_lineage = lineage_cols,
+    Celltype     = celltype_cols
+  ),
+  show_legend = TRUE
+)
+
+row_ha <- rowAnnotation(
+  Tissue = info$Tissue,
+  Stage  = info$Stage,
+  col = list(
+    Tissue = tissue_cols,
+    Stage  = stage_cols
+  ),
+  show_legend = TRUE
+)
+
+# -----------------------------
+# 7) Heatmap
+# -----------------------------
+hm_cols <- c(
+  "#053061","#2166AC","#4393C3","#92C5DE","#D1E5F0",
+  "#F7F7F7",
+  "#FDDBC7","#F4A582","#D6604D","#B2182B","#67001F"
+)
+
+p <- Heatmap(
+  cor_mat,
+  col = hm_cols,
+  cluster_rows = TRUE,
+  cluster_columns = TRUE,
+  show_row_names = FALSE,
+  show_column_names = FALSE,
+  show_row_dend = FALSE,
+  show_column_dend = FALSE,
+  top_annotation = col_ha,
+  left_annotation = row_ha,
+  row_title = NULL,
+  use_raster = TRUE
+)
+
+pdf(file.path(out_dir, "Figure2A_heatmap.pdf"),
+    width = 9, height = 7, useDingbats = FALSE)
+draw(p)
+dev.off()
